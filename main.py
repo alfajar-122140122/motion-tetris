@@ -40,46 +40,105 @@ def setup_webcam(device_id=0, width=640, height=480):
     return cap
 
 def detect_hand_gesture(frame):
-    """Detect hand gestures using MediaPipe and draw landmark points"""
+    """Detect hand gestures using MediaPipe and map to Tetris controls"""
     # Convert the frame to RGB (required by MediaPipe)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
     # Process the frame and detect hands
     results = hands.process(rgb_frame)
     
+    gesture = "none"
+    
     if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            # Get frame dimensions
-            height, width, _ = frame.shape
-            
-            # Convert normalized coordinates to pixel coordinates
-            landmark_points = []
-            for landmark in hand_landmarks.landmark:
-                # Convert normalized coordinates to pixel coordinates
-                x = int(landmark.x * width)
-                y = int(landmark.y * height)
-                landmark_points.append((x, y))
-                
-                # Draw circle at each landmark point
-                cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
-            
-            # Draw connections between landmarks
-            mp.solutions.drawing_utils.draw_landmarks(
-                frame, 
-                hand_landmarks, 
-                mp_hands.HAND_CONNECTIONS,
-                mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-                mp.solutions.drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=2)
-            )
-            
-            # Optionally, you can label specific landmarks
-            # Example: Label thumb tip (landmark 4)
-            if len(landmark_points) > 4:
-                thumb_tip = landmark_points[4]
-                cv2.putText(frame, "Thumb", 
-                           (thumb_tip[0], thumb_tip[1] - 10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        # Use the first detected hand for controls
+        hand_landmarks = results.multi_hand_landmarks[0]
+        
+        # Get the gesture
+        gesture = detect_gestures(hand_landmarks, frame.shape)
+        
+        # Draw landmarks on the frame
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame, 
+            hand_landmarks, 
+            mp_hands.HAND_CONNECTIONS,
+            mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+            mp.solutions.drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=2)
+        )
+        
+    # Visualize the detected gesture
+    frame = visualize_gesture(frame, gesture)
+    
+    return frame, gesture
 
+def detect_gestures(landmarks, frame_shape):
+    """
+    Detect hand gestures and map them to Tetris controls:
+    - Angkat tangan kanan → right
+    - Angkat tangan kiri → left
+    - Tepuk tangan → rotate
+    Returns: action (string): 'left', 'right', 'rotate', 'none'
+    """
+    if not landmarks:
+        return "none"
+    
+    height, width = frame_shape[:2]
+    
+    # Get key landmarks
+    wrist = (landmarks.landmark[0].x, landmarks.landmark[0].y)
+    thumb_tip = (landmarks.landmark[4].x, landmarks.landmark[4].y)
+    index_tip = (landmarks.landmark[8].x, landmarks.landmark[8].y)
+    middle_tip = (landmarks.landmark[12].x, landmarks.landmark[12].y)
+    
+    # Mendeteksi tangan kanan atau kiri
+    # MediaPipe sudah mendeteksi tangan kiri atau kanan, tapi sebagai alternatif
+    # kita bisa menggunakan posisi ibu jari relatif terhadap telapak tangan
+    is_right_hand = thumb_tip[0] > wrist[0]  # Ibu jari di sebelah kanan pergelangan = tangan kanan
+    
+    # Hitung posisi rata-rata ujung jari (untuk menentukan "angkat tangan")
+    avg_fingertip_y = (landmarks.landmark[8].y + landmarks.landmark[12].y + 
+                      landmarks.landmark[16].y + landmarks.landmark[20].y) / 4
+    
+    # Hitung jarak antara ujung jari
+    # Jika jarak kecil → tepuk tangan/jari rapat
+    tip_distance = np.sqrt((index_tip[0] - middle_tip[0])**2 + 
+                          (index_tip[1] - middle_tip[1])**2)
+    
+    # Ambang batas untuk menentukan gerakan
+    RAISED_THRESHOLD = 0.4  # Tangan dianggap terangkat jika rata-rata ujung jari di atas nilai ini
+    CLAP_THRESHOLD = 0.04   # Jarak antar jari untuk mendeteksi tepuk
+    
+    # Tentukan gerakan
+    if avg_fingertip_y < RAISED_THRESHOLD:  # Tangan terangkat
+        if is_right_hand:
+            return "right"  # Tangan kanan terangkat
+        else:
+            return "left"   # Tangan kiri terangkat
+    elif tip_distance < CLAP_THRESHOLD:
+        return "rotate"     # Jari-jari rapat, menandakan tepuk atau siap tepuk
+    
+    return "none"  # Tidak ada gerakan yang terdeteksi
+
+def visualize_gesture(frame, gesture):
+    """Add visual indication of detected gesture to the frame"""
+    # Display the detected gesture
+    gesture_text = f"Gesture: {gesture}"
+    cv2.putText(frame, gesture_text, (10, 70), 
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+    
+    # Add visual cue based on the gesture
+    if gesture == "left":
+        cv2.arrowedLine(frame, (100, 120), (50, 120), (0, 0, 255), 5)
+        cv2.putText(frame, "Tangan Kiri", (50, 150), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    elif gesture == "right":
+        cv2.arrowedLine(frame, (100, 120), (150, 120), (0, 0, 255), 5)
+        cv2.putText(frame, "Tangan Kanan", (50, 150), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    elif gesture == "rotate":
+        cv2.circle(frame, (100, 120), 25, (0, 0, 255), -1)
+        cv2.putText(frame, "Tepuk Tangan", (50, 150), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    
     return frame
 
 def main():
@@ -110,7 +169,18 @@ def main():
                     break
                 
                 # Process the frame with hand gesture detection
-                processed_frame = detect_hand_gesture(frame)
+                processed_frame, gesture = detect_hand_gesture(frame)
+                
+                # Respond to the gesture
+                if gesture == "left":
+                    # Code to move Tetris piece left
+                    print("Moving left")
+                elif gesture == "right":
+                    # Code to move Tetris piece right
+                    print("Moving right")
+                elif gesture == "rotate":
+                    # Code to rotate Tetris piece
+                    print("Rotating piece")
                 
                 # Display FPS on frame
                 cv2.putText(processed_frame, f"FPS: {avg_fps:.1f}", (10, 30),
