@@ -9,7 +9,7 @@ hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
     min_detection_confidence=0.5,  # Reduced from 0.7 for better performance
-    min_tracking_confidence=0.5
+    min_tracking_confidence=0.3
 )
 
 def read_frame(cap):
@@ -153,10 +153,43 @@ def visualize_gesture(frame, gesture):
     
     return frame
 
+def create_tetris_board():
+    """Create an empty Tetris board as a 20x10 grid using numpy"""
+    board = np.zeros((20, 10), dtype=int)
+    return board
+
+def draw_tetris_board(board, cell_size=30):
+    """Draw the Tetris board on a new canvas"""
+    # Create a black canvas for the board
+    height, width = board.shape
+    board_canvas = np.zeros((height * cell_size, width * cell_size, 3), dtype=np.uint8)
+    
+    # Draw grid lines
+    for i in range(height + 1):
+        cv2.line(board_canvas, (0, i * cell_size), (width * cell_size, i * cell_size), (50, 50, 50), 1)
+    for j in range(width + 1):
+        cv2.line(board_canvas, (j * cell_size, 0), (j * cell_size, height * cell_size), (50, 50, 50), 1)
+    
+    return board_canvas
+
+def combine_board_and_webcam(board_canvas, webcam_frame):
+    """Combine the Tetris board and webcam feed side by side"""
+    # Resize webcam frame to match board height
+    board_height = board_canvas.shape[0]
+    webcam_height = webcam_frame.shape[0]
+    scale = board_height / webcam_height
+    new_width = int(webcam_frame.shape[1] * scale)
+    webcam_resized = cv2.resize(webcam_frame, (new_width, board_height))
+    
+    # Combine the two images horizontally
+    combined = np.hstack((board_canvas, webcam_resized))
+    return combined
+
 def main():
     webcam = None
     prev_time = 0
     fps_values = []
+    tetris_board = create_tetris_board()
     
     try:
         webcam = setup_webcam(width=640, height=480)
@@ -183,23 +216,18 @@ def main():
                 # Process the frame with hand gesture detection
                 processed_frame, gesture = detect_hand_gesture(frame)
                 
-                # Respond to the gesture
-                if gesture == "left":
-                    # Code to move Tetris piece left
-                    print("Moving left")
-                elif gesture == "right":
-                    # Code to move Tetris piece right
-                    print("Moving right")
-                elif gesture == "rotate":
-                    # Code to rotate Tetris piece
-                    print("Rotating piece")
+                # Draw Tetris board
+                board_canvas = draw_tetris_board(tetris_board)
                 
-                # Display FPS on frame
-                cv2.putText(processed_frame, f"FPS: {avg_fps:.1f}", (10, 30),
+                # Combine board and webcam feed
+                combined_frame = combine_board_and_webcam(board_canvas, processed_frame)
+                
+                # Display FPS on combined frame
+                cv2.putText(combined_frame, f"FPS: {avg_fps:.1f}", (10, 30),
                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 
-                # Display the processed frame
-                cv2.imshow('Motion Tetris', processed_frame)
+                # Display the combined frame
+                cv2.imshow('Motion Tetris', combined_frame)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
