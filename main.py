@@ -185,17 +185,169 @@ def combine_board_and_webcam(board_canvas, webcam_frame):
     combined = np.hstack((board_canvas, webcam_resized))
     return combined
 
+def create_tetris_shapes():
+    """Create all Tetris shapes (tetrominoes) and their rotations"""
+    # Shape format: Each shape is a list of rotations
+    # Each rotation is a 4x4 array where:
+    # 0 = empty, 1-7 = shape ID (for different colors)
+    
+    # I Shape - Cyan (1)
+    I_SHAPE = [
+        np.array([[0, 0, 0, 0],
+                 [1, 1, 1, 1],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 0, 1, 0],
+                 [0, 0, 1, 0],
+                 [0, 0, 1, 0],
+                 [0, 0, 1, 0]])
+    ]
+
+    # J Shape - Blue (2)
+    J_SHAPE = [
+        np.array([[2, 0, 0, 0],
+                 [2, 2, 2, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 2, 2, 0],
+                 [0, 2, 0, 0],
+                 [0, 2, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 0, 0, 0],
+                 [2, 2, 2, 0],
+                 [0, 0, 2, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 2, 0, 0],
+                 [0, 2, 0, 0],
+                 [2, 2, 0, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    # L Shape - Orange (3)
+    L_SHAPE = [
+        np.array([[0, 0, 3, 0],
+                 [3, 3, 3, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 3, 0, 0],
+                 [0, 3, 0, 0],
+                 [0, 3, 3, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 0, 0, 0],
+                 [3, 3, 3, 0],
+                 [3, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[3, 3, 0, 0],
+                 [0, 3, 0, 0],
+                 [0, 3, 0, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    # O Shape - Yellow (4)
+    O_SHAPE = [
+        np.array([[0, 4, 4, 0],
+                 [0, 4, 4, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    # S Shape - Green (5)
+    S_SHAPE = [
+        np.array([[0, 5, 5, 0],
+                 [5, 5, 0, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 5, 0, 0],
+                 [0, 5, 5, 0],
+                 [0, 0, 5, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    # T Shape - Purple (6)
+    T_SHAPE = [
+        np.array([[0, 6, 0, 0],
+                 [6, 6, 6, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 6, 0, 0],
+                 [0, 6, 6, 0],
+                 [0, 6, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 0, 0, 0],
+                 [6, 6, 6, 0],
+                 [0, 6, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 6, 0, 0],
+                 [6, 6, 0, 0],
+                 [0, 6, 0, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    # Z Shape - Red (7)
+    Z_SHAPE = [
+        np.array([[7, 7, 0, 0],
+                 [0, 7, 7, 0],
+                 [0, 0, 0, 0],
+                 [0, 0, 0, 0]]),
+        np.array([[0, 0, 7, 0],
+                 [0, 7, 7, 0],
+                 [0, 7, 0, 0],
+                 [0, 0, 0, 0]])
+    ]
+
+    return {
+        'I': {'shape': I_SHAPE, 'color': (255, 255, 0)},   # Cyan
+        'J': {'shape': J_SHAPE, 'color': (255, 0, 0)},     # Blue
+        'L': {'shape': L_SHAPE, 'color': (255, 165, 0)},   # Orange
+        'O': {'shape': O_SHAPE, 'color': (0, 255, 255)},   # Yellow
+        'S': {'shape': S_SHAPE, 'color': (0, 255, 0)},     # Green
+        'T': {'shape': T_SHAPE, 'color': (128, 0, 128)},   # Purple
+        'Z': {'shape': Z_SHAPE, 'color': (0, 0, 255)}      # Red
+    }
+
+def draw_tetris_shape(board_canvas, shape, rotation_idx, pos_x, pos_y, cell_size=30):
+    """Draw a Tetris shape on the board canvas"""
+    shape_array = shape['shape'][rotation_idx]
+    color = shape['color']
+    
+    for i in range(4):
+        for j in range(4):
+            if shape_array[i][j] != 0:
+                x1 = (pos_x + j) * cell_size
+                y1 = (pos_y + i) * cell_size
+                x2 = x1 + cell_size
+                y2 = y1 + cell_size
+                
+                # Draw filled rectangle with shape color
+                cv2.rectangle(board_canvas, (x1, y1), (x2, y2), color, -1)
+                # Draw border
+                cv2.rectangle(board_canvas, (x1, y1), (x2, y2), (180, 180, 180), 1)
+
 def main():
     webcam = None
     prev_time = 0
     fps_values = []
     tetris_board = create_tetris_board()
+    tetris_shapes = create_tetris_shapes()
+    
+    # Game state variables
+    current_shape_key = 'T'  # Start with T-shape
+    current_rotation = 0
+    pos_x, pos_y = 3, 0
+    shape_keys = list(tetris_shapes.keys())
+    shape_index = 0
+    
+    # Game timing variables
+    last_move_time = time.time()
+    move_delay = 0.5  # Delay between automatic downward movements (in seconds)
+    gesture_delay = 0.3  # Delay between gesture recognition (in seconds)
+    last_gesture_time = time.time()
     
     try:
         webcam = setup_webcam(width=640, height=480)
         
         if webcam is not None:
-            print("Press 'q' to quit.")
+            print("Press 'q' to quit, 'a'/'d' for left/right, 'w' to rotate, space to change shape")
             while True:
                 # Calculate FPS
                 current_time = time.time()
@@ -219,18 +371,60 @@ def main():
                 # Draw Tetris board
                 board_canvas = draw_tetris_board(tetris_board)
                 
+                # Handle gestures with delay to prevent rapid movement
+                if current_time - last_gesture_time > gesture_delay:
+                    if gesture == "left" and pos_x > 0:
+                        pos_x -= 1
+                        last_gesture_time = current_time
+                    elif gesture == "right" and pos_x < 6:  # 6 = 10-4 (board width - max shape width)
+                        pos_x += 1
+                        last_gesture_time = current_time
+                    elif gesture == "rotate":
+                        current_rotation = (current_rotation + 1) % len(tetris_shapes[current_shape_key]['shape'])
+                        last_gesture_time = current_time
+                
+                # Automatic downward movement with delay
+                if current_time - last_move_time > move_delay:
+                    pos_y += 1
+                    last_move_time = current_time
+                    
+                    # Reset position if reached bottom
+                    if pos_y > 16:  # 16 = 20-4 (board height - max shape height)
+                        pos_y = 0
+                        pos_x = 3
+                
+                # Draw current tetris shape
+                draw_tetris_shape(board_canvas, tetris_shapes[current_shape_key], current_rotation, pos_x, pos_y)
+                
                 # Combine board and webcam feed
                 combined_frame = combine_board_and_webcam(board_canvas, processed_frame)
                 
-                # Display FPS on combined frame
-                cv2.putText(combined_frame, f"FPS: {avg_fps:.1f}", (10, 30),
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # Display information
+                cv2.putText(combined_frame, f"Shape: {current_shape_key}", (10, 30),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                cv2.putText(combined_frame, f"FPS: {avg_fps:.1f}", (10, 60),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
                 # Display the combined frame
                 cv2.imshow('Motion Tetris', combined_frame)
                 
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                # Handle keyboard input
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
                     break
+                elif key == ord('a') and pos_x > 0:
+                    pos_x -= 1
+                elif key == ord('d') and pos_x < 6:
+                    pos_x += 1
+                elif key == ord('w'):
+                    current_rotation = (current_rotation + 1) % len(tetris_shapes[current_shape_key]['shape'])
+                elif key == ord(' '):  # Space bar to change shape
+                    shape_index = (shape_index + 1) % len(shape_keys)
+                    current_shape_key = shape_keys[shape_index]
+                    current_rotation = 0
+                
+                # Add small delay to control frame rate and CPU usage
+                time.sleep(0.01)
                 
     except KeyboardInterrupt:
         print("\nProgram interrupted by user. Cleaning up...")
