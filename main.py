@@ -3,6 +3,11 @@ import mediapipe as mp
 import numpy as np
 import time
 
+# Game constants
+BOARD_WIDTH = 10
+BOARD_HEIGHT = 20
+CELL_SIZE = 40
+
 # Initialize MediaPipe Hand detection globally
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
@@ -11,6 +16,9 @@ hands = mp_hands.Hands(
     min_detection_confidence=0.5,  # Reduced from 0.7 for better performance
     min_tracking_confidence=0.3
 )
+
+BOARD_WIDTH = 10  # Width of the Tetris board
+BOARD_HEIGHT = 20  # Height of the Tetris board
 
 def read_frame(cap):
     """Read a frame from the webcam and return it"""
@@ -154,21 +162,26 @@ def visualize_gesture(frame, gesture):
     return frame
 
 def create_tetris_board():
-    """Create an empty Tetris board as a 20x10 grid using numpy"""
-    board = np.zeros((20, 10), dtype=int)
+    """Create an empty Tetris board using the defined dimensions"""
+    board = np.zeros((BOARD_HEIGHT, BOARD_WIDTH), dtype=int)
     return board
 
-def draw_tetris_board(board, cell_size=30):
+def draw_tetris_board(board):
     """Draw the Tetris board on a new canvas"""
     # Create a black canvas for the board
-    height, width = board.shape
-    board_canvas = np.zeros((height * cell_size, width * cell_size, 3), dtype=np.uint8)
+    board_canvas = np.zeros((BOARD_HEIGHT * CELL_SIZE, BOARD_WIDTH * CELL_SIZE, 3), dtype=np.uint8)
+    
+    # Fill background with dark gray
+    board_canvas[:] = (30, 30, 30)  # Dark gray background
     
     # Draw grid lines
-    for i in range(height + 1):
-        cv2.line(board_canvas, (0, i * cell_size), (width * cell_size, i * cell_size), (50, 50, 50), 1)
-    for j in range(width + 1):
-        cv2.line(board_canvas, (j * cell_size, 0), (j * cell_size, height * cell_size), (50, 50, 50), 1)
+    for i in range(BOARD_HEIGHT + 1):
+        cv2.line(board_canvas, (0, i * CELL_SIZE), (BOARD_WIDTH * CELL_SIZE, i * CELL_SIZE), (50, 50, 50), 1)
+    for j in range(BOARD_WIDTH + 1):
+        cv2.line(board_canvas, (j * CELL_SIZE, 0), (j * CELL_SIZE, BOARD_HEIGHT * CELL_SIZE), (50, 50, 50), 1)
+    
+    # Draw board border
+    cv2.rectangle(board_canvas, (0, 0), (BOARD_WIDTH * CELL_SIZE - 1, BOARD_HEIGHT * CELL_SIZE - 1), (100, 100, 100), 2)
     
     return board_canvas
 
@@ -305,7 +318,7 @@ def create_tetris_shapes():
         'Z': {'shape': Z_SHAPE, 'color': (0, 0, 255)}      # Red
     }
 
-def draw_tetris_shape(board_canvas, shape, rotation_idx, pos_x, pos_y, cell_size=30):
+def draw_tetris_shape(board_canvas, shape, rotation_idx, pos_x, pos_y):
     """Draw a Tetris shape on the board canvas"""
     shape_array = shape['shape'][rotation_idx]
     color = shape['color']
@@ -313,15 +326,73 @@ def draw_tetris_shape(board_canvas, shape, rotation_idx, pos_x, pos_y, cell_size
     for i in range(4):
         for j in range(4):
             if shape_array[i][j] != 0:
-                x1 = (pos_x + j) * cell_size
-                y1 = (pos_y + i) * cell_size
-                x2 = x1 + cell_size
-                y2 = y1 + cell_size
+                x1 = (pos_x + j) * CELL_SIZE
+                y1 = (pos_y + i) * CELL_SIZE
+                x2 = x1 + CELL_SIZE
+                y2 = y1 + CELL_SIZE
                 
                 # Draw filled rectangle with shape color
                 cv2.rectangle(board_canvas, (x1, y1), (x2, y2), color, -1)
                 # Draw border
                 cv2.rectangle(board_canvas, (x1, y1), (x2, y2), (180, 180, 180), 1)
+
+def overlay_tetris_on_webcam(webcam_frame, board_canvas, alpha=0.7):
+    """Overlay Tetris board on the webcam feed with transparency"""
+    # Calculate the target size while maintaining aspect ratio
+    webcam_height, webcam_width = webcam_frame.shape[:2]
+    board_height, board_width = board_canvas.shape[:2]
+    
+    # Calculate scaling to make board height 80% of webcam height
+    scale_factor = (webcam_height * 0.8) / board_height
+    target_width = int(board_width * scale_factor)
+    target_height = int(board_height * scale_factor)
+    
+    # Resize board canvas to target size
+    board_resized = cv2.resize(board_canvas, (target_width, target_height))
+    
+    # Calculate position to center the board
+    x_offset = (webcam_width - target_width) // 2
+    y_offset = (webcam_height - target_height) // 2
+    
+    # Create an output frame starting with the webcam frame
+    result = webcam_frame.copy()
+    
+    # Create a mask for non-black parts of the board
+    gray_board = cv2.cvtColor(board_resized, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray_board, 30, 255, cv2.THRESH_BINARY)
+    
+    # Create inverted mask for the webcam background
+    mask_inv = cv2.bitwise_not(mask)
+    
+    # Extract the ROI from the webcam frame
+    roi = result[y_offset:y_offset+target_height, x_offset:x_offset+target_width]
+    
+    # Create the foreground and background
+    board_fg = cv2.bitwise_and(board_resized, board_resized, mask=mask)
+    webcam_bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
+    
+    # Combine foreground and background
+    combined_roi = cv2.addWeighted(board_fg, alpha, webcam_bg, 1.0, 0)
+    
+    # Copy the combined ROI back to the result frame
+    result[y_offset:y_offset+target_height, x_offset:x_offset+target_width] = combined_roi
+    
+    # Draw a border around the board
+    cv2.rectangle(result, 
+                 (x_offset, y_offset), 
+                 (x_offset + target_width, y_offset + target_height),
+                 (255, 255, 255), 2)
+    
+    return result
+
+def get_shape_width(shape, rotation_idx):
+    """Calculate the actual width of a shape in its current rotation"""
+    shape_array = shape['shape'][rotation_idx]
+    width = 0
+    for col in range(4):
+        if any(shape_array[row][col] != 0 for row in range(4)):
+            width += 1
+    return width
 
 def main():
     webcam = None
@@ -343,11 +414,14 @@ def main():
     gesture_delay = 0.3  # Delay between gesture recognition (in seconds)
     last_gesture_time = time.time()
     
+    # Display modes
+    overlay_mode = False  # Toggle between side-by-side and overlay views
+    
     try:
         webcam = setup_webcam(width=640, height=480)
         
         if webcam is not None:
-            print("Press 'q' to quit, 'a'/'d' for left/right, 'w' to rotate, space to change shape")
+            print("Press 'q' to quit, 'a'/'d' for left/right, 'w' to rotate, space to change shape, 'o' to toggle overlay")
             while True:
                 # Calculate FPS
                 current_time = time.time()
@@ -375,9 +449,11 @@ def main():
                 if current_time - last_gesture_time > gesture_delay:
                     if gesture == "left" and pos_x > 0:
                         pos_x -= 1
-                        last_gesture_time = current_time
-                    elif gesture == "right" and pos_x < 6:  # 6 = 10-4 (board width - max shape width)
-                        pos_x += 1
+                        last_gesture_time = current_time                    
+                    elif gesture == "right":
+                        shape_width = get_shape_width(tetris_shapes[current_shape_key], current_rotation)
+                        if pos_x < BOARD_WIDTH - shape_width:
+                            pos_x += 1
                         last_gesture_time = current_time
                     elif gesture == "rotate":
                         current_rotation = (current_rotation + 1) % len(tetris_shapes[current_shape_key]['shape'])
@@ -396,32 +472,44 @@ def main():
                 # Draw current tetris shape
                 draw_tetris_shape(board_canvas, tetris_shapes[current_shape_key], current_rotation, pos_x, pos_y)
                 
-                # Combine board and webcam feed
-                combined_frame = combine_board_and_webcam(board_canvas, processed_frame)
+                # Choose display mode (overlay or side-by-side)
+                if overlay_mode:
+                    display_frame = overlay_tetris_on_webcam(processed_frame, board_canvas, alpha=0.6)
+                else:
+                    display_frame = combine_board_and_webcam(board_canvas, processed_frame)
                 
                 # Display information
-                cv2.putText(combined_frame, f"Shape: {current_shape_key}", (10, 30),
+                cv2.putText(display_frame, f"Shape: {current_shape_key}", (10, 30),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                cv2.putText(combined_frame, f"FPS: {avg_fps:.1f}", (10, 60),
+                cv2.putText(display_frame, f"FPS: {avg_fps:.1f}", (10, 60),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
-                # Display the combined frame
-                cv2.imshow('Motion Tetris', combined_frame)
+                # Display mode indicator
+                mode_text = "Mode: Overlay" if overlay_mode else "Mode: Side-by-side"
+                cv2.putText(display_frame, mode_text, (10, 90),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                
+                # Display the frame
+                cv2.imshow('Motion Tetris', display_frame)
                 
                 # Handle keyboard input
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     break
                 elif key == ord('a') and pos_x > 0:
-                    pos_x -= 1
-                elif key == ord('d') and pos_x < 6:
-                    pos_x += 1
+                    pos_x -= 1                
+                elif key == ord('d'):
+                    shape_width = get_shape_width(tetris_shapes[current_shape_key], current_rotation)
+                    if pos_x < BOARD_WIDTH - shape_width:
+                        pos_x += 1
                 elif key == ord('w'):
                     current_rotation = (current_rotation + 1) % len(tetris_shapes[current_shape_key]['shape'])
                 elif key == ord(' '):  # Space bar to change shape
                     shape_index = (shape_index + 1) % len(shape_keys)
                     current_shape_key = shape_keys[shape_index]
                     current_rotation = 0
+                elif key == ord('o'):  # Toggle overlay mode
+                    overlay_mode = not overlay_mode
                 
                 # Add small delay to control frame rate and CPU usage
                 time.sleep(0.01)
