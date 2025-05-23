@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
+import pygame # Added for sound effects
 
 # Game constants
 BOARD_WIDTH = 10
@@ -495,7 +496,30 @@ def main():
     last_gesture_time = time.time()
     
     overlay_mode = False
+
+    # Initialize Pygame and its mixer
+    pygame.init()
+    pygame.mixer.init()
     
+    # Load sound effects
+    bgm_loaded = False
+    clear_sound_loaded = False
+    
+    try:
+        pygame.mixer.music.load("sfx/bgm.mp3")
+        pygame.mixer.music.play(-1)  # Play indefinitely
+        bgm_loaded = True
+        print("BGM loaded and playing.")
+    except pygame.error as e:
+        print(f"Warning: Could not load/play BGM 'sfx/bgm.mp3': {e}")
+        
+    try:
+        clear_row_sound = pygame.mixer.Sound("sfx/clearRow.mp3")
+        clear_sound_loaded = True
+        print("Clear row sound loaded.")
+    except pygame.error as e:
+        print(f"Warning: Could not load clear row sound 'sfx/clearRow.mp3': {e}")
+        
     try:
         webcam = setup_webcam(width=640, height=480)
         
@@ -547,6 +571,8 @@ def main():
                             if lines_cleared_now > 0:
                                 lines_cleared_total += lines_cleared_now
                                 score += calculate_score(lines_cleared_now)
+                                if clear_sound_loaded:
+                                    clear_row_sound.play()
                             
                             # Spawn new piece
                             # import random # if you want random pieces
@@ -648,6 +674,8 @@ def main():
         cv2.destroyAllWindows()
         if fps_values: # Ensure fps_values is not empty
             print(f"Final average FPS: {sum(fps_values) / len(fps_values):.1f}")
+        pygame.mixer.music.stop() # Stop BGM
+        pygame.quit() # Quit Pygame
         print("Cleanup complete.")
 
 if __name__ == "__main__":
