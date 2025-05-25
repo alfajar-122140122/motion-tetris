@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from config import BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, SHAPE_COLORS
+from config import BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, SHAPE_COLORS, VIDEO_FOURCC, OUTPUT_VIDEO_FILENAME
 
 def read_frame(cap):
     """Read a frame from the webcam and return it"""
@@ -24,6 +24,16 @@ def setup_webcam(device_id=0, width=640, height=480):
     actual_fps = cap.get(cv2.CAP_PROP_FPS)
     print(f"Webcam opened successfully. Resolution: {actual_width}x{actual_height}, FPS: {actual_fps}")
     return cap
+
+def setup_video_writer(output_filename, fourcc_str, fps, frame_size):
+    """Setup VideoWriter object to save video."""
+    fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
+    writer = cv2.VideoWriter(output_filename, fourcc, fps, frame_size)
+    if not writer.isOpened():
+        print(f"Error: Could not open video writer for {output_filename}")
+        return None
+    print(f"Video writer configured for {output_filename} at {fps} FPS, size {frame_size}")
+    return writer
 
 def draw_tetris_board(game_board):
     """Draw the Tetris board on a new canvas, including placed pieces"""

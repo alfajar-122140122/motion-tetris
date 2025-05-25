@@ -1,10 +1,12 @@
 import cv2
 import time
 import pygame
+import os  # Import os module for directory creation
 
 from config import (
     BOARD_WIDTH, DEFAULT_MOVE_DELAY, GESTURE_COOLDOWN,
-    BGM_PATH, CLEAR_ROW_SOUND_PATH
+    BGM_PATH, CLEAR_ROW_SOUND_PATH, DEFAULT_MUSIC_VOLUME,
+    VIDEO_OUTPUT_DIRECTORY, OUTPUT_VIDEO_FILENAME, VIDEO_FOURCC # Added VIDEO_OUTPUT_DIRECTORY
 )
 from gestures import detect_hand_gesture
 from tetris_logic import (
@@ -21,7 +23,8 @@ from video_processing import (
     draw_tetris_board,
     draw_tetris_shape,
     combine_board_and_webcam,
-    overlay_tetris_on_webcam
+    overlay_tetris_on_webcam,
+    setup_video_writer # Added video writer setup function
 )
 
 def initialize_pygame_mixer():
@@ -29,8 +32,9 @@ def initialize_pygame_mixer():
     pygame.mixer.init()
     try:
         pygame.mixer.music.load(BGM_PATH)
+        pygame.mixer.music.set_volume(DEFAULT_MUSIC_VOLUME) # Set music volume
         pygame.mixer.music.play(-1)  # Play indefinitely
-        print("BGM loaded and playing.")
+        print(f"BGM loaded and playing at volume: {DEFAULT_MUSIC_VOLUME}")
     except pygame.error as e:
         print(f"Warning: Could not load/play BGM '{BGM_PATH}': {e}")
 
@@ -121,10 +125,18 @@ def draw_game_over_screen(display_frame, score):
 
 def main():
     webcam = None
-    prev_time = time.time() # Initialize prev_time before the loop
+    video_writer = None
+    prev_time = time.time()
     fps_values = []
     tetris_shapes_data = create_tetris_shapes()
     clear_row_sound = initialize_pygame_mixer()
+
+    # Create video output directory if it doesn't exist
+    if not os.path.exists(VIDEO_OUTPUT_DIRECTORY):
+        os.makedirs(VIDEO_OUTPUT_DIRECTORY)
+        print(f"Created directory: {VIDEO_OUTPUT_DIRECTORY}")
+
+    video_file_path = os.path.join(VIDEO_OUTPUT_DIRECTORY, OUTPUT_VIDEO_FILENAME)
 
     (
         tetris_board, score, lines_cleared_total, game_over,
@@ -142,6 +154,7 @@ def main():
             print("Failed to setup webcam. Exiting.")
             return
 
+        # Video writer will be initialized after the first frame is processed
         print("Press 'q' to quit, 'r' to restart. Gestures or a/d/w for controls.")
         while True:
             current_time = time.time()
@@ -225,6 +238,21 @@ def main():
                 draw_game_over_screen(display_frame, score)
 
             cv2.imshow('Motion Tetris', display_frame)
+
+            # Initialize video_writer with the first display_frame's dimensions
+            if video_writer is None and display_frame is not None:
+                output_fps = webcam.get(cv2.CAP_PROP_FPS)
+                if output_fps == 0 or output_fps > 60: # Cap FPS for recording if webcam reports too high or zero
+                    output_fps = 30.0
+                display_frame_size = (display_frame.shape[1], display_frame.shape[0])
+                video_writer = setup_video_writer(video_file_path, VIDEO_FOURCC, output_fps, display_frame_size) # Use video_file_path
+                if video_writer is None:
+                    print("Warning: Video recording will not be available.")
+
+            # Write frame to video
+            if video_writer is not None and display_frame is not None:
+                video_writer.write(display_frame)
+
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('q'):
@@ -237,6 +265,13 @@ def main():
                         shape_keys, shape_index, current_shape_key, current_rotation,
                         pos_x, pos_y, last_move_time, last_gesture_time
                     ) = reset_game_state(tetris_shapes_data)
+                    # Optionally, reset video writer for new recording or stop current one
+                    if video_writer is not None:
+                        video_writer.release()
+                        print(f"Video segment saved to {video_file_path}. New recording will start.") # Use video_file_path
+                        # Re-initialize for a new file, or set to None to create a new file in the next iteration.
+                        # For simplicity, setting to None to create a new file with potentially different dimensions if mode changed.
+                        video_writer = None
                 continue # Skip normal controls if game over
 
             # Keyboard input (only if not game over)
@@ -270,6 +305,9 @@ def main():
     finally:
         if webcam is not None:
             webcam.release()
+        if video_writer is not None: # Release video writer
+            video_writer.release()
+            print(f"Video saved to {video_file_path}") # Use video_file_path
         cv2.destroyAllWindows()
         if fps_values:
             print(f"Final average FPS: {sum(fps_values) / len(fps_values):.1f}")

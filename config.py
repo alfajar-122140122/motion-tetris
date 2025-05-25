@@ -25,3 +25,9 @@ GESTURE_COOLDOWN = 0.3  # Delay between gesture recognitions
 # Sound file paths
 BGM_PATH = "sfx/bgm.mp3"
 CLEAR_ROW_SOUND_PATH = "sfx/clearRow.mp3"
+DEFAULT_MUSIC_VOLUME = 0.3 # Default music volume (0.0 to 1.0)
+
+# Video recording constants
+VIDEO_OUTPUT_DIRECTORY = "game_recordings"
+OUTPUT_VIDEO_FILENAME = "tetris_gameplay.avi"
+VIDEO_FOURCC = "XVID" # Codec for AVI file, common and widely supported
