@@ -92,7 +92,9 @@ def handle_input(key, game_state, tetris_board, tetris_shapes_data):
         if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x, pos_y + 1):
             new_pos_y = pos_y + 1
             # last_move_time should be updated in the main loop if soft drop occurs
-    elif key == ord(' '):  # Change shape (or hard drop - current implementation changes shape)
+    elif key == ord(' '):  # Hard drop
+        new_pos_y = perform_hard_drop(tetris_board, tetris_shapes_data, current_shape_key, current_rotation, pos_x, pos_y)
+    elif key == ord('n'):  # Change shape (moved from spacebar to 'n' key)
         new_shape_index = (shape_index + 1) % len(shape_keys)
         potential_new_shape_key = shape_keys[new_shape_index]
         if is_valid_position(tetris_board, tetris_shapes_data[potential_new_shape_key], 0, pos_x, pos_y):
@@ -122,6 +124,18 @@ def draw_game_over_screen(display_frame, score):
     cv2.putText(display_frame, "Game Over!", (text_x, text_y - 30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3, cv2.LINE_AA)
     cv2.putText(display_frame, f"Final Score: {score}", (text_x, text_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
     cv2.putText(display_frame, "Press 'R' to Restart or 'Q' to Quit", (text_x - 100, text_y + 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2, cv2.LINE_AA)
+    # Add reminder about gesture controls
+    cv2.putText(display_frame, "Gesture: Fist (Genggam) = Hard Drop", (text_x - 100, text_y + 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+
+def perform_hard_drop(tetris_board, tetris_shapes_data, current_shape_key, current_rotation, pos_x, pos_y):
+    """Drops the piece all the way down until it collides with something."""
+    drop_y = pos_y
+    
+    # Keep dropping until collision
+    while is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x, drop_y + 1):
+        drop_y += 1
+    
+    return drop_y
 
 def main():
     webcam = None
@@ -155,7 +169,10 @@ def main():
             return
 
         # Video writer will be initialized after the first frame is processed
-        print("Press 'q' to quit, 'r' to restart. Gestures or a/d/w for controls.")
+        print("Press 'q' to quit, 'r' to restart.")
+        print("Controls: a/d/w/s for movement, space for hard drop, n to change shape")
+        print("Gestures: left/right hand for movement, clap for rotation, fist (genggam tangan) for hard drop")
+
         while True:
             current_time = time.time()
             delta_time = current_time - prev_time
@@ -178,7 +195,7 @@ def main():
             if not game_over:
                 # Handle gesture input
                 if current_time - last_gesture_time > gesture_cooldown:
-                    next_pos_x_gesture, next_rotation_gesture = pos_x, current_rotation
+                    next_pos_x_gesture, next_rotation_gesture, next_pos_y_gesture = pos_x, current_rotation, pos_y
                     gesture_moved = False
                     if gesture == "left":
                         next_pos_x_gesture = pos_x - 1
@@ -189,12 +206,21 @@ def main():
                     elif gesture == "rotate":
                         next_rotation_gesture = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
                         gesture_moved = True # Rotation is also a move
+                    elif gesture == "hardDrop":
+                        next_pos_y_gesture = perform_hard_drop(
+                            tetris_board, tetris_shapes_data, current_shape_key, current_rotation, pos_x, pos_y
+                        )
+                        gesture_moved = next_pos_y_gesture > pos_y
 
                     if gesture_moved:
                         if gesture == "rotate":
                             if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], next_rotation_gesture, pos_x, pos_y):
                                 current_rotation = next_rotation_gesture
                                 last_gesture_time = current_time
+                        elif gesture == "hardDrop":
+                            pos_y = next_pos_y_gesture
+                            last_gesture_time = current_time
+                            last_move_time = current_time - move_delay  # Force immediate landing check in next update
                         else: # Left or Right
                             if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, next_pos_x_gesture, pos_y):
                                 pos_x = next_pos_x_gesture

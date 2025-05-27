@@ -58,7 +58,7 @@ def detect_clap(hand1_landmarks, hand2_landmarks, frame_shape):
 def detect_single_hand_gestures(landmarks, frame_shape, hand_label):
     """
     Detect single hand gestures (raised left/right hand) and map them to Tetris controls.
-    Returns: action (str): 'left', 'right', or 'none'
+    Returns: action (str): 'left', 'right', 'hardDrop', or 'none'
     """
     if not landmarks:
         return "none"
@@ -68,11 +68,26 @@ def detect_single_hand_gestures(landmarks, frame_shape, hand_label):
     middle_tip_y = landmarks.landmark[12].y
     ring_tip_y = landmarks.landmark[16].y
     pinky_tip_y = landmarks.landmark[20].y
-
+    
+    # Get finger MCP (knuckle) positions for fist detection
+    index_mcp_y = landmarks.landmark[5].y
+    middle_mcp_y = landmarks.landmark[9].y
+    ring_mcp_y = landmarks.landmark[13].y
+    pinky_mcp_y = landmarks.landmark[17].y
+    
+    # Fingertips height average
     avg_fingers_height = (index_tip_y + middle_tip_y + ring_tip_y + pinky_tip_y) / 4
     raised_hand = avg_fingers_height < wrist_y - 0.15
-
-    if raised_hand:
+    
+    # Detect fist: when fingertips are below knuckles (fingers curled)
+    fist_detected = (index_tip_y > index_mcp_y and 
+                    middle_tip_y > middle_mcp_y and 
+                    ring_tip_y > ring_mcp_y and 
+                    pinky_tip_y > pinky_mcp_y)
+    
+    if fist_detected:
+        return "hardDrop"
+    elif raised_hand:
         if hand_label == "Right":
             return "right"
         else:
@@ -96,4 +111,8 @@ def visualize_gesture(frame, gesture):
     elif gesture == "rotate":
         cv2.circle(frame, (100, 120), 25, (0, 0, 255), -1)
         cv2.putText(frame, "Tepuk Tangan", (50, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    elif gesture == "hardDrop":
+        cv2.arrowedLine(frame, (100, 100), (100, 150), (0, 0, 255), 5)
+        cv2.putText(frame, "Genggam Tangan", (50, 170),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
