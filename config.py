@@ -21,6 +21,8 @@ CLAP_THRESHOLD = 150  # pixels
 # Game timing
 DEFAULT_MOVE_DELAY = 0.5  # Delay between automatic downward movements
 GESTURE_COOLDOWN = 0.3  # Delay between gesture recognitions
+HARD_DROP_SPEED_MULTIPLIER = 3.0  # Speed multiplier for hard drop (3x faster)
+HARD_DROP_DELAY = DEFAULT_MOVE_DELAY / HARD_DROP_SPEED_MULTIPLIER  # Calculated delay for hard drop
 
 # Sound file paths
 BGM_PATH = "sfx/bgm.mp3"
