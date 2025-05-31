@@ -34,8 +34,8 @@ Menggunakan kamera (webcam), program akan secara real-time memproses citra dan m
 
 | No. | Nama Lengkap        | NIM        | ID GitHub                                   |
 | --- | ------------------- | ---------- | ------------------------------------------- |
-| 1.  | [Alfjar]    | [122140122]    | [@alfajar-122140122](https://github.com/alfajar-122140122) |
-| 2.  | [Muhammad Ghiffari Iskandar]    | [122140189]    | [@GhiffariIs](https://github.com/GhiffariIs) |
+| 1.  | Alfajar    | 122140122    | [@alfajar-122140122](https://github.com/alfajar-122140122) |
+| 2.  | Muhammad Ghiffari Iskandar    | 122140189    | [@GhiffariIs](https://github.com/GhiffariIs) |
 
 ---
 
