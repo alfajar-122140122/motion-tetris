@@ -1,102 +1,173 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from config import CLAP_THRESHOLD
+import time
+from config import PINCH_THRESHOLD, ROTATION_RECOGNITION_DELAY, FIST_THRESHOLD
 
 # Initialize MediaPipe Hand detection globally
 mp_hands = mp.solutions.hands
-hands_detector = mp_hands.Hands( # Renamed for clarity
+hands_detector = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.3
 )
 
+# Global variables for rotation gesture tracking
+last_rotation_time = 0
+rotation_gesture_active = False
+
 def detect_hand_gesture(frame):
     """Detect hand gestures using MediaPipe and map to Tetris controls."""
+    global last_rotation_time, rotation_gesture_active
+    
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = hands_detector.process(rgb_frame) # Use renamed detector
+    results = hands_detector.process(rgb_frame)
     gesture = "none"
+    current_time = time.time()
 
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
             mp.solutions.drawing_utils.draw_landmarks(
                 frame,
                 hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                mp_hands.HAND_CONNECTIONS,                mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
                 mp.solutions.drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=2)
             )
+        
+        # Check for pinch gesture (rotation) - dapat dilakukan dengan tangan kanan atau kiri
+        if len(results.multi_hand_landmarks) >= 1:
+            for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                if results.multi_handedness and len(results.multi_handedness) > i:
+                    hand_label = results.multi_handedness[i].classification[0].label
+                    
+                    # Draw debug information (only for first hand to avoid clutter)
+                    if i == 0:
+                        draw_debug_info(frame, hand_landmarks, hand_label)
+                    
+                    # Check for pinch gesture (thumb tip touches index finger tip)
+                    if detect_pinch_gesture(hand_landmarks, frame.shape):
+                        if not rotation_gesture_active and (current_time - last_rotation_time) > ROTATION_RECOGNITION_DELAY:
+                            gesture = "rotate"
+                            rotation_gesture_active = True
+                            last_rotation_time = current_time
+                            break  # Only process one rotation gesture at a time
+                    else:
+                        rotation_gesture_active = False
+                        
+                        # Only check other gestures if no pinch detected
+                        single_hand_gesture = detect_single_hand_gestures(hand_landmarks, frame.shape, hand_label)
+                        if single_hand_gesture != "none":
+                            gesture = single_hand_gesture
+                            break  # Process only first detected gesture
 
-        if len(results.multi_hand_landmarks) == 2:
-            # Check for clap only if two hands are detected
-            if detect_clap(results.multi_hand_landmarks[0], results.multi_hand_landmarks[1], frame.shape):
-                gesture = "rotate"
-        elif len(results.multi_hand_landmarks) == 1: # Process single hand gestures only if one hand is present
-            hand_landmarks = results.multi_hand_landmarks[0]
-            if results.multi_handedness and results.multi_handedness[0].classification:
-                hand_label = results.multi_handedness[0].classification[0].label
-                gesture = detect_single_hand_gestures(hand_landmarks, frame.shape, hand_label)
-            # else: gesture remains "none" if handedness info is missing
-
-    visualize_gesture(frame, gesture) # visualize_gesture is called once after processing all hands
+    visualize_gesture(frame, gesture)
     return frame, gesture
 
-def detect_clap(hand1_landmarks, hand2_landmarks, frame_shape):
-    """Detect if two hands are close enough to be considered a clap."""
+def detect_pinch_gesture(landmarks, frame_shape):
+    """
+    Improved pinch gesture detection with better algorithm.
+    Returns: bool - True if pinch gesture is detected
+    """
     height, width = frame_shape[:2]
-    hand1_palm_x = hand1_landmarks.landmark[9].x * width
-    hand1_palm_y = hand1_landmarks.landmark[9].y * height
-    hand2_palm_x = hand2_landmarks.landmark[9].x * width
-    hand2_palm_y = hand2_landmarks.landmark[9].y * height
-
-    palm_distance = np.sqrt((hand1_palm_x - hand2_palm_x)**2 +
-                          (hand1_palm_y - hand2_palm_y)**2)
-
-    return palm_distance < CLAP_THRESHOLD
+    
+    # Get thumb tip (landmark 4) and index finger tip (landmark 8) coordinates
+    thumb_tip_x = landmarks.landmark[4].x * width
+    thumb_tip_y = landmarks.landmark[4].y * height
+    index_tip_x = landmarks.landmark[8].x * width
+    index_tip_y = landmarks.landmark[8].y * height
+    
+    # Get thumb MCP and index MCP for additional validation
+    thumb_mcp_x = landmarks.landmark[2].x * width
+    thumb_mcp_y = landmarks.landmark[2].y * height
+    index_mcp_x = landmarks.landmark[5].x * width
+    index_mcp_y = landmarks.landmark[5].y * height
+    
+    # Calculate distance between thumb tip and index finger tip
+    tip_distance = np.sqrt((thumb_tip_x - index_tip_x)**2 + (thumb_tip_y - index_tip_y)**2)
+    
+    # Calculate distance between thumb MCP and index MCP for scale reference
+    mcp_distance = np.sqrt((thumb_mcp_x - index_mcp_x)**2 + (thumb_mcp_y - index_mcp_y)**2)
+      # Normalize tip distance by hand size (using MCP distance as reference)
+    if mcp_distance > 0:
+        normalized_distance = tip_distance / mcp_distance
+        # Pinch detected if normalized distance is small (fingers close together)
+        # Increased threshold for better detection sensitivity
+        return normalized_distance < 0.6  # More lenient threshold for easier detection
+    
+    # Fallback to absolute distance if normalization fails
+    return tip_distance < PINCH_THRESHOLD
 
 def detect_single_hand_gestures(landmarks, frame_shape, hand_label):
     """
-    Detect single hand gestures (raised left/right hand) and map them to Tetris controls.
+    Improved single hand gesture detection with better fist detection algorithm.
     Returns: action (str): 'left', 'right', 'hardDrop', or 'none'
     """
     if not landmarks:
         return "none"
 
+    # Get landmark positions
     wrist_y = landmarks.landmark[0].y
+    
+    # Fingertip positions (landmarks 4, 8, 12, 16, 20)
+    thumb_tip_y = landmarks.landmark[4].y
     index_tip_y = landmarks.landmark[8].y
     middle_tip_y = landmarks.landmark[12].y
     ring_tip_y = landmarks.landmark[16].y
     pinky_tip_y = landmarks.landmark[20].y
     
-    # Get finger MCP (knuckle) positions for fist detection
+    # Finger MCP (knuckle) positions for fist detection
     index_mcp_y = landmarks.landmark[5].y
     middle_mcp_y = landmarks.landmark[9].y
     ring_mcp_y = landmarks.landmark[13].y
     pinky_mcp_y = landmarks.landmark[17].y
     
-    # Fingertips height average
+    # PIP joint positions for better fist detection
+    index_pip_y = landmarks.landmark[6].y
+    middle_pip_y = landmarks.landmark[10].y
+    ring_pip_y = landmarks.landmark[14].y
+    pinky_pip_y = landmarks.landmark[18].y
+    
+    # Improved fist detection: check if fingertips are curled below PIPs
+    # This is more reliable than checking against MCPs
+    fist_fingers = 0
+    total_fingers = 4
+    
+    # Check each finger individually (excluding thumb for now)
+    if index_tip_y > index_pip_y + FIST_THRESHOLD:
+        fist_fingers += 1
+    if middle_tip_y > middle_pip_y + FIST_THRESHOLD:
+        fist_fingers += 1
+    if ring_tip_y > ring_pip_y + FIST_THRESHOLD:
+        fist_fingers += 1
+    if pinky_tip_y > pinky_pip_y + FIST_THRESHOLD:
+        fist_fingers += 1
+    
+    # Additional check: ensure thumb is also curled (thumb tip below thumb MCP)
+    thumb_mcp_y = landmarks.landmark[2].y
+    thumb_curled = thumb_tip_y > thumb_mcp_y
+    
+    # Fist detected if most fingers are curled (at least 3 out of 4) and thumb is curled
+    fist_detected = (fist_fingers >= 3) and thumb_curled
+    
+    # Check for raised hand (open palm facing camera)
     avg_fingers_height = (index_tip_y + middle_tip_y + ring_tip_y + pinky_tip_y) / 4
-    raised_hand = avg_fingers_height < wrist_y - 0.15
+    raised_hand = avg_fingers_height < wrist_y - 0.1  # Reduced threshold for better detection
     
-    # Detect fist: when fingertips are below knuckles (fingers curled)
-    fist_detected = (index_tip_y > index_mcp_y and 
-                    middle_tip_y > middle_mcp_y and 
-                    ring_tip_y > ring_mcp_y and 
-                    pinky_tip_y > pinky_mcp_y)
-    
+    # Priority: fist detection first, then raised hand
     if fist_detected:
         return "hardDrop"
-    elif raised_hand:
+    elif raised_hand and not fist_detected:
         if hand_label == "Right":
             return "right"
         else:
             return "left"
+    
     return "none"
 
 def visualize_gesture(frame, gesture):
-    """Add visual indication of the detected gesture to the frame."""
-    gesture_text = f"Gesture: {gesture.capitalize()}" # Capitalize for better display
+    """Add visual indication of the detected gesture to the frame with debug info."""
+    gesture_text = f"Gesture: {gesture.capitalize()}"
     cv2.putText(frame, gesture_text, (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
@@ -110,9 +181,85 @@ def visualize_gesture(frame, gesture):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
     elif gesture == "rotate":
         cv2.circle(frame, (100, 120), 25, (0, 0, 255), -1)
-        cv2.putText(frame, "Tepuk Tangan", (50, 150),
+        cv2.putText(frame, "Gesture Pinch", (50, 150),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        cv2.putText(frame, "Rotasi Aktif!", (50, 180),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+        cv2.putText(frame, "Tangan: Kiri/Kanan", (50, 200),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
     elif gesture == "hardDrop":
         cv2.arrowedLine(frame, (100, 100), (100, 150), (0, 0, 255), 5)
         cv2.putText(frame, "Genggam Tangan", (50, 170),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        cv2.putText(frame, "Hard Drop Aktif!", (50, 200),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+    
+    # Add instruction text
+    cv2.putText(frame, "Instructions:", (10, frame.shape[0] - 120),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, "- Angkat tangan: Gerak kiri/kanan", (10, frame.shape[0] - 100),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    cv2.putText(frame, "- Pinch (jempol+telunjuk): Rotasi", (10, frame.shape[0] - 80),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    cv2.putText(frame, "- Genggam tangan: Hard Drop", (10, frame.shape[0] - 60),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+def draw_debug_info(frame, landmarks, hand_label):
+    """Draw debug information for gesture detection on the frame."""
+    if not landmarks:
+        return
+    
+    height, width = frame.shape[:2]
+    
+    # Get key landmarks
+    thumb_tip = landmarks.landmark[4]
+    index_tip = landmarks.landmark[8]
+    thumb_mcp = landmarks.landmark[2]
+    index_mcp = landmarks.landmark[5]
+    
+    # Calculate distances for pinch detection
+    thumb_tip_x, thumb_tip_y = int(thumb_tip.x * width), int(thumb_tip.y * height)
+    index_tip_x, index_tip_y = int(index_tip.x * width), int(index_tip.y * height)
+    thumb_mcp_x, thumb_mcp_y = int(thumb_mcp.x * width), int(thumb_mcp.y * height)
+    index_mcp_x, index_mcp_y = int(index_mcp.x * width), int(index_mcp.y * height)
+    
+    tip_distance = np.sqrt((thumb_tip_x - index_tip_x)**2 + (thumb_tip_y - index_tip_y)**2)
+    mcp_distance = np.sqrt((thumb_mcp_x - index_mcp_x)**2 + (thumb_mcp_y - index_mcp_y)**2)
+    
+    if mcp_distance > 0:
+        normalized_distance = tip_distance / mcp_distance
+    else:
+        normalized_distance = 999
+    
+    # Draw circles on thumb and index finger tips
+    cv2.circle(frame, (thumb_tip_x, thumb_tip_y), 8, (255, 0, 255), -1)  # Magenta for thumb
+    cv2.circle(frame, (index_tip_x, index_tip_y), 8, (0, 255, 255), -1)  # Cyan for index
+    
+    # Draw line between thumb and index finger
+    cv2.line(frame, (thumb_tip_x, thumb_tip_y), (index_tip_x, index_tip_y), (255, 255, 0), 2)
+    
+    # Check pinch status for visual feedback
+    pinch_detected = normalized_distance < 0.6 if mcp_distance > 0 else tip_distance < PINCH_THRESHOLD
+    pinch_status = "PINCH DETECTED!" if pinch_detected else "Not Pinching"
+    pinch_color = (0, 255, 0) if pinch_detected else (255, 255, 255)
+    
+    # Display debug text
+    debug_y_start = 400
+    cv2.putText(frame, f"Hand: {hand_label}", (10, debug_y_start),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, f"Tip Distance: {tip_distance:.1f}", (10, debug_y_start + 20),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, f"Normalized: {normalized_distance:.2f}", (10, debug_y_start + 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, f"Pinch Threshold: 0.6", (10, debug_y_start + 60),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(frame, pinch_status, (10, debug_y_start + 80),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, pinch_color, 2)
+    
+    # Check fist status for additional debug info
+    index_tip_y_norm = landmarks.landmark[8].y
+    index_pip_y_norm = landmarks.landmark[6].y
+    
+    fist_status = "Open" if index_tip_y_norm <= index_pip_y_norm else "Curled"
+    cv2.putText(frame, f"Fist Status: {fist_status}", (10, debug_y_start + 100),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
