@@ -215,9 +215,6 @@ def draw_game_info(display_frame, score, lines_cleared_total, avg_fps, overlay_m
     cv2.putText(display_frame, f"Score: {score}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(display_frame, f"Lines: {lines_cleared_total}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(display_frame, f"FPS: {avg_fps:.1f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    mode_text = "Mode: Overlay" if overlay_mode else "Mode: Side-by-side"
-    cv2.putText(display_frame, mode_text, (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    
     # Show hard drop status
     if hard_drop_active:
         cv2.putText(display_frame, "HARD DROP ACTIVE!", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
@@ -236,7 +233,6 @@ def draw_game_over_screen(display_frame, score):
     cv2.putText(display_frame, "Game Over!", (text_x, text_y - 30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3, cv2.LINE_AA)
     cv2.putText(display_frame, f"Final Score: {score}", (text_x, text_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
     cv2.putText(display_frame, "Press 'R' to Restart or 'Q' to Quit", (text_x - 100, text_y + 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2, cv2.LINE_AA)
-    cv2.putText(display_frame, "Gesture: Fist (Genggam) = Hard Drop", (text_x - 100, text_y + 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
 
 # =============================================================================
 # GAME MECHANICS UTILITIES
