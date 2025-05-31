@@ -37,6 +37,9 @@ CLAP_THRESHOLD = 150                # Distance threshold for clap detection (pix
 PINCH_THRESHOLD = 0.05              # Distance threshold for pinch gesture
 FIST_THRESHOLD = 0.6                # Threshold for fist gesture detection
 ROTATION_RECOGNITION_DELAY = 0.6    # Delay between rotation gesture recognitions (seconds)
+CLAP_DISTANCE_THRESHOLD = 0.2       # Threshold for hands being close together (normalized)
+CLAP_COOLDOWN = 0.5                # Minimum seconds between clap detections
+CLAP_MIN_VELOCITY = 0.3            # Minimum velocity for clap motion detection
 
 # =============================================================================
 # GAME TIMING PARAMETERS
