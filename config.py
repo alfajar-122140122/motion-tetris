@@ -17,10 +17,14 @@ SHAPE_COLORS = {
 
 # Gesture detection constants
 CLAP_THRESHOLD = 150  # pixels
+PINCH_THRESHOLD = 0.05  # Distance threshold for pinch gesture
+ROTATION_RECOGNITION_DELAY = 0.6  # Delay between rotation gesture recognitions (increased for better control)
+FIST_THRESHOLD = 0.6  # Threshold for fist gesture detection
 
 # Game timing
 DEFAULT_MOVE_DELAY = 0.5  # Delay between automatic downward movements
 GESTURE_COOLDOWN = 0.3  # Delay between gesture recognitions
+ROTATION_DELAY = 0.5  # Delay between rotation actions (increased for better positioning control)
 HARD_DROP_SPEED_MULTIPLIER = 3.0  # Speed multiplier for hard drop (3x faster)
 HARD_DROP_DELAY = DEFAULT_MOVE_DELAY / HARD_DROP_SPEED_MULTIPLIER  # Calculated delay for hard drop
 

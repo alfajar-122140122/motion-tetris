@@ -8,7 +8,7 @@ from config import (
     BOARD_WIDTH, DEFAULT_MOVE_DELAY, GESTURE_COOLDOWN,
     BGM_PATH, CLEAR_ROW_SOUND_PATH, DEFAULT_MUSIC_VOLUME,
     VIDEO_OUTPUT_DIRECTORY, OUTPUT_VIDEO_FILENAME, VIDEO_FOURCC,
-    HARD_DROP_DELAY  # Added HARD_DROP_DELAY import
+    HARD_DROP_DELAY, ROTATION_DELAY, ROTATION_RECOGNITION_DELAY  # Added rotation delay constants
 )
 from gestures import detect_hand_gesture
 from tetris_logic import (
@@ -62,25 +62,27 @@ def reset_game_state(tetris_shapes_data):
     pos_y = 0
     last_move_time = time.time()
     last_gesture_time = time.time()
+    last_rotation_time = time.time()  # Added rotation delay tracking
     hard_drop_active = False  # Added hard drop state tracking
     print("Game Restarted!")
     return (
         tetris_board, score, lines_cleared_total, game_over,
         shape_keys, shape_index, current_shape_key, current_rotation,
-        pos_x, pos_y, last_move_time, last_gesture_time, hard_drop_active
+        pos_x, pos_y, last_move_time, last_gesture_time, last_rotation_time, hard_drop_active
     )
 
-def handle_input(key, game_state, tetris_board, tetris_shapes_data):
+def handle_input(key, game_state, tetris_board, tetris_shapes_data, current_time):
     """Handles keyboard input for controlling the game."""
     (pos_x, current_rotation, current_shape_key, shape_keys, shape_index,
-     last_move_time, overlay_mode, pos_y, hard_drop_active) = game_state
-
+     last_move_time, overlay_mode, pos_y, hard_drop_active, last_rotation_time) = game_state
+    
     new_pos_x = pos_x
     new_current_rotation = current_rotation
     new_current_shape_key = current_shape_key
     new_shape_index = shape_index
     new_pos_y = pos_y
     new_hard_drop_active = hard_drop_active
+    new_last_rotation_time = last_rotation_time
 
     if key == ord('a'):  # Move left
         if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x - 1, pos_y):
@@ -89,9 +91,12 @@ def handle_input(key, game_state, tetris_board, tetris_shapes_data):
         if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x + 1, pos_y):
             new_pos_x = pos_x + 1
     elif key == ord('w'):  # Rotate
-        next_rotation = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
-        if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], next_rotation, pos_x, pos_y):
-            new_current_rotation = next_rotation
+        # Apply rotation delay
+        if current_time - last_rotation_time > ROTATION_DELAY:
+            next_rotation = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
+            if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], next_rotation, pos_x, pos_y):
+                new_current_rotation = next_rotation
+                new_last_rotation_time = current_time
     elif key == ord('s'):  # Soft drop
         if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x, pos_y + 1):
             new_pos_y = pos_y + 1
@@ -108,7 +113,7 @@ def handle_input(key, game_state, tetris_board, tetris_shapes_data):
     elif key == ord('o'):
         overlay_mode = not overlay_mode
 
-    return new_pos_x, new_current_rotation, new_current_shape_key, new_shape_index, new_pos_y, overlay_mode, new_hard_drop_active
+    return new_pos_x, new_current_rotation, new_current_shape_key, new_shape_index, new_pos_y, overlay_mode, new_hard_drop_active, new_last_rotation_time
 
 def draw_game_info(display_frame, score, lines_cleared_total, avg_fps, overlay_mode, hard_drop_active):
     """Draws game information (score, lines, FPS, mode, hard drop status) on the display frame."""
@@ -154,13 +159,14 @@ def main():
     if not os.path.exists(VIDEO_OUTPUT_DIRECTORY):
         os.makedirs(VIDEO_OUTPUT_DIRECTORY)
         print(f"Created directory: {VIDEO_OUTPUT_DIRECTORY}")
-
+    
     video_file_path = os.path.join(VIDEO_OUTPUT_DIRECTORY, OUTPUT_VIDEO_FILENAME)
-
+    
+    # Initialize game state
     (
         tetris_board, score, lines_cleared_total, game_over,
         shape_keys, shape_index, current_shape_key, current_rotation,
-        pos_x, pos_y, last_move_time, last_gesture_time, hard_drop_active
+        pos_x, pos_y, last_move_time, last_gesture_time, last_rotation_time, hard_drop_active
     ) = reset_game_state(tetris_shapes_data)
 
     move_delay = DEFAULT_MOVE_DELAY
@@ -196,8 +202,7 @@ def main():
             processed_frame, gesture = detect_hand_gesture(frame.copy())
             board_canvas = draw_tetris_board(tetris_board)
 
-            if not game_over:
-                # Handle gesture input
+            if not game_over:                # Handle gesture input
                 if current_time - last_gesture_time > gesture_cooldown:
                     next_pos_x_gesture, next_rotation_gesture = pos_x, current_rotation
                     gesture_moved = False
@@ -211,9 +216,11 @@ def main():
                         gesture_moved = True
                         hard_drop_active = False  # Deactivate hard drop on other gestures
                     elif gesture == "rotate":
-                        next_rotation_gesture = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
-                        gesture_moved = True
-                        hard_drop_active = False  # Deactivate hard drop on other gestures
+                        # Apply rotation delay for gesture too
+                        if current_time - last_rotation_time > ROTATION_DELAY:
+                            next_rotation_gesture = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
+                            gesture_moved = True
+                            hard_drop_active = False  # Deactivate hard drop on other gestures
                     elif gesture == "hardDrop":
                         hard_drop_active = True  # Activate controlled hard drop
                         gesture_moved = True
@@ -225,6 +232,7 @@ def main():
                             if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], next_rotation_gesture, pos_x, pos_y):
                                 current_rotation = next_rotation_gesture
                                 last_gesture_time = current_time
+                                last_rotation_time = current_time  # Update rotation time for gesture
                         elif gesture == "hardDrop":
                             last_gesture_time = current_time
                         else:  # Left or Right
@@ -290,33 +298,33 @@ def main():
                 video_writer.write(display_frame)
 
             key = cv2.waitKey(1) & 0xFF
-
+            
             if key == ord('q'):
                 break
-
+                
             if game_over:
                 if key == ord('r'):
                     (
                         tetris_board, score, lines_cleared_total, game_over,
                         shape_keys, shape_index, current_shape_key, current_rotation,
-                        pos_x, pos_y, last_move_time, last_gesture_time, hard_drop_active
+                        pos_x, pos_y, last_move_time, last_gesture_time, last_rotation_time, hard_drop_active
                     ) = reset_game_state(tetris_shapes_data)
                     if video_writer is not None:
                         video_writer.release()
                         print(f"Video segment saved to {video_file_path}. New recording will start.")
                         video_writer = None
                 continue
-
-            # Keyboard input (only if not game over)
-            game_state_tuple = (pos_x, current_rotation, current_shape_key, shape_keys, shape_index, last_move_time, overlay_mode, pos_y, hard_drop_active)
-            new_pos_x, new_current_rotation, new_current_shape_key, new_shape_index, new_pos_y, new_overlay_mode, new_hard_drop_active = handle_input(
-                key, game_state_tuple, tetris_board, tetris_shapes_data
-            )
             
-            # Update game state based on input if changed
+            # Keyboard input (only if not game over)
+            game_state_tuple = (pos_x, current_rotation, current_shape_key, shape_keys, shape_index, last_move_time, overlay_mode, pos_y, hard_drop_active, last_rotation_time)
+            new_pos_x, new_current_rotation, new_current_shape_key, new_shape_index, new_pos_y, new_overlay_mode, new_hard_drop_active, new_last_rotation_time = handle_input(
+                key, game_state_tuple, tetris_board, tetris_shapes_data, current_time
+            )
+              # Update game state based on input if changed
             if pos_x != new_pos_x or current_rotation != new_current_rotation or \
                current_shape_key != new_current_shape_key or shape_index != new_shape_index or \
-               pos_y != new_pos_y or overlay_mode != new_overlay_mode or hard_drop_active != new_hard_drop_active:
+               pos_y != new_pos_y or overlay_mode != new_overlay_mode or hard_drop_active != new_hard_drop_active or \
+               last_rotation_time != new_last_rotation_time:
 
                 pos_x = new_pos_x
                 current_rotation = new_current_rotation
@@ -324,6 +332,7 @@ def main():
                 shape_index = new_shape_index
                 overlay_mode = new_overlay_mode
                 hard_drop_active = new_hard_drop_active
+                last_rotation_time = new_last_rotation_time
                 
                 # If soft drop (s key) was pressed, update pos_y and last_move_time
                 if key == ord('s') and pos_y != new_pos_y:
