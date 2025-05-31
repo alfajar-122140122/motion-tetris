@@ -1,14 +1,56 @@
+"""
+Motion Tetris - Main Game Loop
+============================
+This is the main module that orchestrates the Motion Tetris game combining:
+- Video capture and hand gesture detection
+- Tetris game logic and mechanics  
+- Audio playback and sound effects
+- Video recording and display management
+
+Game Controls:
+- Keyboard: a/d (left/right), w (rotate), s (soft drop), space (hard drop)
+- Gestures: Left/right hand raised (move), pinch (rotate), fist (hard drop)
+
+Author: Motion Tetris Team
+Version: 1.0
+"""
+
+"""
+Motion Tetris - Main Game Loop
+=============================
+This is the main module that orchestrates the Motion Tetris game combining:
+- Video capture and hand gesture detection
+- Tetris game logic and mechanics  
+- Audio playback and sound effects
+- Video recording and display management
+
+Game Controls:
+- Keyboard: a/d (left/right), w (rotate), s (soft drop), space (hard drop)
+- Gestures: Left/right hand raised (move), pinch (rotate), fist (hard drop)
+
+Author: Motion Tetris Team
+Version: 1.0
+"""
+
 import cv2
 import time
 import pygame
 import os
 import traceback
 
+# =============================================================================
+# IMPORTS FROM PROJECT MODULES
+# =============================================================================
+
+# =============================================================================
+# IMPORTS FROM PROJECT MODULES
+# =============================================================================
+
 from config import (
     BOARD_WIDTH, DEFAULT_MOVE_DELAY, GESTURE_COOLDOWN,
     BGM_PATH, CLEAR_ROW_SOUND_PATH, DEFAULT_MUSIC_VOLUME,
     VIDEO_OUTPUT_DIRECTORY, OUTPUT_VIDEO_FILENAME, VIDEO_FOURCC,
-    HARD_DROP_DELAY, ROTATION_DELAY, ROTATION_RECOGNITION_DELAY  # Added rotation delay constants
+    HARD_DROP_DELAY, ROTATION_DELAY, ROTATION_RECOGNITION_DELAY
 )
 from gestures import detect_hand_gesture
 from tetris_logic import (
@@ -29,9 +71,20 @@ from video_processing import (
     setup_video_writer
 )
 
+# =============================================================================
+# AUDIO INITIALIZATION AND MANAGEMENT
+# =============================================================================
+
 def initialize_pygame_mixer():
-    """Initializes Pygame mixer and loads sound effects."""
+    """
+    Initialize Pygame mixer and load sound effects.
+    
+    Returns:
+        pygame.mixer.Sound or None: Clear row sound effect, None if failed to load
+    """
     pygame.mixer.init()
+    
+    # Load and play background music
     try:
         pygame.mixer.music.load(BGM_PATH)
         pygame.mixer.music.set_volume(DEFAULT_MUSIC_VOLUME)
@@ -40,6 +93,7 @@ def initialize_pygame_mixer():
     except pygame.error as e:
         print(f"Warning: Could not load/play BGM '{BGM_PATH}': {e}")
 
+    # Load clear row sound effect
     try:
         clear_sound = pygame.mixer.Sound(CLEAR_ROW_SOUND_PATH)
         print("Clear row sound loaded.")
@@ -48,8 +102,20 @@ def initialize_pygame_mixer():
         print(f"Warning: Could not load clear row sound '{CLEAR_ROW_SOUND_PATH}': {e}")
         return None
 
+# =============================================================================
+# GAME STATE MANAGEMENT
+# =============================================================================
+
 def reset_game_state(tetris_shapes_data):
-    """Resets the game state to start a new game."""
+    """
+    Reset the game state to start a new game.
+    
+    Args:
+        tetris_shapes_data: Dictionary containing Tetris piece shapes
+        
+    Returns:
+        tuple: Complete game state variables for a new game
+    """
     tetris_board = create_tetris_board()
     score = 0
     lines_cleared_total = 0
@@ -62,8 +128,8 @@ def reset_game_state(tetris_shapes_data):
     pos_y = 0
     last_move_time = time.time()
     last_gesture_time = time.time()
-    last_rotation_time = time.time()  # Added rotation delay tracking
-    hard_drop_active = False  # Added hard drop state tracking
+    last_rotation_time = time.time()
+    hard_drop_active = False
     print("Game Restarted!")
     return (
         tetris_board, score, lines_cleared_total, game_over,
@@ -71,8 +137,24 @@ def reset_game_state(tetris_shapes_data):
         pos_x, pos_y, last_move_time, last_gesture_time, last_rotation_time, hard_drop_active
     )
 
+# =============================================================================
+# INPUT HANDLING
+# =============================================================================
+
 def handle_input(key, game_state, tetris_board, tetris_shapes_data, current_time):
-    """Handles keyboard input for controlling the game."""
+    """
+    Handle keyboard input for controlling the game.
+    
+    Args:
+        key: Pressed key code
+        game_state: Current game state tuple
+        tetris_board: Current Tetris board state
+        tetris_shapes_data: Dictionary containing Tetris piece shapes
+        current_time: Current time for delay calculations
+        
+    Returns:
+        tuple: Updated game state values
+    """
     (pos_x, current_rotation, current_shape_key, shape_keys, shape_index,
      last_move_time, overlay_mode, pos_y, hard_drop_active, last_rotation_time) = game_state
     
@@ -91,8 +173,7 @@ def handle_input(key, game_state, tetris_board, tetris_shapes_data, current_time
         if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], current_rotation, pos_x + 1, pos_y):
             new_pos_x = pos_x + 1
     elif key == ord('w'):  # Rotate
-        # Apply rotation delay
-        if current_time - last_rotation_time > ROTATION_DELAY:
+        # Apply rotation delay        if current_time - last_rotation_time > ROTATION_DELAY:
             next_rotation = (current_rotation + 1) % len(tetris_shapes_data[current_shape_key]['shape'])
             if is_valid_position(tetris_board, tetris_shapes_data[current_shape_key], next_rotation, pos_x, pos_y):
                 new_current_rotation = next_rotation
@@ -115,8 +196,22 @@ def handle_input(key, game_state, tetris_board, tetris_shapes_data, current_time
 
     return new_pos_x, new_current_rotation, new_current_shape_key, new_shape_index, new_pos_y, overlay_mode, new_hard_drop_active, new_last_rotation_time
 
+# =============================================================================
+# DISPLAY AND UI FUNCTIONS
+# =============================================================================
+
 def draw_game_info(display_frame, score, lines_cleared_total, avg_fps, overlay_mode, hard_drop_active):
-    """Draws game information (score, lines, FPS, mode, hard drop status) on the display frame."""
+    """
+    Draw game information (score, lines, FPS, mode, hard drop status) on the display frame.
+    
+    Args:
+        display_frame: Frame to draw information on
+        score: Current game score
+        lines_cleared_total: Total lines cleared
+        avg_fps: Average FPS value
+        overlay_mode: Whether overlay mode is active
+        hard_drop_active: Whether hard drop is currently active
+    """
     cv2.putText(display_frame, f"Score: {score}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(display_frame, f"Lines: {lines_cleared_total}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(display_frame, f"FPS: {avg_fps:.1f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
@@ -128,7 +223,13 @@ def draw_game_info(display_frame, score, lines_cleared_total, avg_fps, overlay_m
         cv2.putText(display_frame, "HARD DROP ACTIVE!", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
 def draw_game_over_screen(display_frame, score):
-    """Draws the game over screen."""
+    """
+    Draw the game over screen with final score and instructions.
+    
+    Args:
+        display_frame: Frame to draw game over screen on
+        score: Final game score
+    """
     text_size, _ = cv2.getTextSize("Game Over!", cv2.FONT_HERSHEY_SIMPLEX, 2, 3)
     text_x = (display_frame.shape[1] - text_size[0]) // 2
     text_y = (display_frame.shape[0] + text_size[1]) // 2
@@ -137,8 +238,25 @@ def draw_game_over_screen(display_frame, score):
     cv2.putText(display_frame, "Press 'R' to Restart or 'Q' to Quit", (text_x - 100, text_y + 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2, cv2.LINE_AA)
     cv2.putText(display_frame, "Gesture: Fist (Genggam) = Hard Drop", (text_x - 100, text_y + 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
 
+# =============================================================================
+# GAME MECHANICS UTILITIES
+# =============================================================================
+
 def perform_instant_hard_drop(tetris_board, tetris_shapes_data, current_shape_key, current_rotation, pos_x, pos_y):
-    """Drops the piece all the way down instantly until it collides with something."""
+    """
+    Drop the piece all the way down instantly until it collides with something.
+    
+    Args:
+        tetris_board: Current Tetris board state
+        tetris_shapes_data: Dictionary containing Tetris piece shapes
+        current_shape_key: Current piece type
+        current_rotation: Current piece rotation
+        pos_x: Current X position
+        pos_y: Current Y position
+        
+    Returns:
+        int: Final Y position after hard drop
+    """
     drop_y = pos_y
     
     # Keep dropping until collision
@@ -146,6 +264,10 @@ def perform_instant_hard_drop(tetris_board, tetris_shapes_data, current_shape_ke
         drop_y += 1
     
     return drop_y
+
+# =============================================================================
+# MAIN GAME LOOP
+# =============================================================================
 
 def main():
     webcam = None

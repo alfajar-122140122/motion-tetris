@@ -1,8 +1,22 @@
+"""
+Motion Tetris - Hand Gesture Detection Module
+============================================
+This module handles hand gesture detection using MediaPipe for controlling the Tetris game.
+Supported gestures:
+- Left/Right hand raised: Move piece left/right
+- Pinch (thumb + index finger): Rotate piece
+- Fist: Hard drop piece
+"""
+
 import cv2
 import mediapipe as mp
 import numpy as np
 import time
 from config import PINCH_THRESHOLD, ROTATION_RECOGNITION_DELAY, FIST_THRESHOLD
+
+# =============================================================================
+# MEDIAPIPE INITIALIZATION
+# =============================================================================
 
 # Initialize MediaPipe Hand detection globally
 mp_hands = mp.solutions.hands
@@ -13,29 +27,49 @@ hands_detector = mp_hands.Hands(
     min_tracking_confidence=0.3
 )
 
-# Global variables for rotation gesture tracking
-last_rotation_time = 0
-rotation_gesture_active = False
+# =============================================================================
+# GLOBAL VARIABLES FOR GESTURE TRACKING
+# =============================================================================
+
+last_rotation_time = 0              # Track last rotation time for delay
+rotation_gesture_active = False     # Track if rotation gesture is active
+
+# =============================================================================
+# MAIN GESTURE DETECTION FUNCTION
+# =============================================================================
 
 def detect_hand_gesture(frame):
-    """Detect hand gestures using MediaPipe and map to Tetris controls."""
+    """
+    Detect hand gestures using MediaPipe and map to Tetris controls.
+    
+    Args:
+        frame (numpy.ndarray): Input video frame
+        
+    Returns:
+        tuple: (processed_frame, gesture_name)
+            - processed_frame: Frame with gesture visualization
+            - gesture_name: Detected gesture ("left", "right", "rotate", "hardDrop", "none")
+    """
     global last_rotation_time, rotation_gesture_active
     
+    # Convert BGR to RGB for MediaPipe processing
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands_detector.process(rgb_frame)
     gesture = "none"
     current_time = time.time()
 
     if results.multi_hand_landmarks:
+        # Draw hand landmarks on frame
         for hand_landmarks in results.multi_hand_landmarks:
             mp.solutions.drawing_utils.draw_landmarks(
                 frame,
                 hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,                mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                mp_hands.HAND_CONNECTIONS,
+                mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
                 mp.solutions.drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=2)
             )
         
-        # Check for pinch gesture (rotation) - dapat dilakukan dengan tangan kanan atau kiri
+        # Process gestures from detected hands
         if len(results.multi_hand_landmarks) >= 1:
             for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 if results.multi_handedness and len(results.multi_handedness) > i:
@@ -66,8 +100,14 @@ def detect_hand_gesture(frame):
 
 def detect_pinch_gesture(landmarks, frame_shape):
     """
-    Improved pinch gesture detection with better algorithm.
-    Returns: bool - True if pinch gesture is detected
+    Detect pinch gesture (thumb tip touching index finger tip) for rotation.
+    
+    Args:
+        landmarks: MediaPipe hand landmarks
+        frame_shape: Shape of the video frame (height, width)
+        
+    Returns:
+        bool: True if pinch gesture is detected
     """
     height, width = frame_shape[:2]
     
@@ -88,7 +128,8 @@ def detect_pinch_gesture(landmarks, frame_shape):
     
     # Calculate distance between thumb MCP and index MCP for scale reference
     mcp_distance = np.sqrt((thumb_mcp_x - index_mcp_x)**2 + (thumb_mcp_y - index_mcp_y)**2)
-      # Normalize tip distance by hand size (using MCP distance as reference)
+    
+    # Normalize tip distance by hand size (using MCP distance as reference)
     if mcp_distance > 0:
         normalized_distance = tip_distance / mcp_distance
         # Pinch detected if normalized distance is small (fingers close together)
@@ -98,10 +139,21 @@ def detect_pinch_gesture(landmarks, frame_shape):
     # Fallback to absolute distance if normalization fails
     return tip_distance < PINCH_THRESHOLD
 
+# =============================================================================
+# GESTURE DETECTION FUNCTIONS
+# =============================================================================
+
 def detect_single_hand_gestures(landmarks, frame_shape, hand_label):
     """
-    Improved single hand gesture detection with better fist detection algorithm.
-    Returns: action (str): 'left', 'right', 'hardDrop', or 'none'
+    Detect single hand gestures (left/right movement and fist for hard drop).
+    
+    Args:
+        landmarks: MediaPipe hand landmarks
+        frame_shape: Shape of the video frame
+        hand_label: "Left" or "Right" hand label
+        
+    Returns:
+        str: Detected gesture ("left", "right", "hardDrop", "none")
     """
     if not landmarks:
         return "none"
@@ -162,11 +214,20 @@ def detect_single_hand_gestures(landmarks, frame_shape, hand_label):
             return "right"
         else:
             return "left"
-    
     return "none"
 
+# =============================================================================
+# VISUALIZATION FUNCTIONS
+# =============================================================================
+
 def visualize_gesture(frame, gesture):
-    """Add visual indication of the detected gesture to the frame with debug info."""
+    """
+    Add visual indication of the detected gesture to the frame.
+    
+    Args:
+        frame: Video frame to draw on
+        gesture: Detected gesture string
+    """
     gesture_text = f"Gesture: {gesture.capitalize()}"
     cv2.putText(frame, gesture_text, (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
@@ -205,7 +266,14 @@ def visualize_gesture(frame, gesture):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
 def draw_debug_info(frame, landmarks, hand_label):
-    """Draw debug information for gesture detection on the frame."""
+    """
+    Draw debug information for gesture detection on the frame.
+    
+    Args:
+        frame: Video frame to draw on
+        landmarks: MediaPipe hand landmarks
+        hand_label: "Left" or "Right" hand label
+    """
     if not landmarks:
         return
     
