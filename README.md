@@ -39,17 +39,27 @@ Menggunakan kamera (webcam), program akan secara real-time memproses citra dan m
 
 ---
 
-## 📖 Logbook Mingguan
+## 📖 Logbook Project Steps
 
-Berikut adalah catatan progress dan update proyek setiap minggunya.
+Berikut adalah catatan progress dan update proyek setiap progressnya.
 
 
-| Minggu Ke- | Periode (Tanggal)           | Aktivitas/Progress                                                                                                                                                             | Kesulitan                                                                                                                              | Rencana Minggu Depan                                                                       |
+| Progress Ke- | Kontributor           | Aktivitas/Progress                                                                                                                                                             | Status                                                                                                                              | Note                                                                       |
 | :--------: | :--------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-|     1      | DD-MM-YYYY s.d. DD-MM-YYYY | - `[✅]` Pembentukan tim dan pemilihan topik project: Motion Tetris.<br>- `[🔄]` Studi literatur awal mengenai kontrol game berbasis gerakan tangan, game Tetris, dan library yang potensial (OpenCV, MediaPipe, Pygame).<br>- `[📝]` Perancangan konsep dasar Motion Tetris, termasuk definisi gestur tangan untuk kontrol (geser kanan/kiri, rotasi). | Menentukan ambang batas (threshold) yang pas untuk deteksi "angkat tangan" dan "tepuk tangan" agar responsif namun tidak terlalu sensitif. | Setup environment, mulai implementasi logika dasar Tetris dan eksplorasi deteksi tangan dengan MediaPipe. |
-|     2      | DD-MM-YYYY s.d. DD-MM-YYYY | - `[✅]` Setup environment pengembangan (Python, OpenCV, MediaPipe, Pygame).<br>- `[⚙️]` Implementasi logika dasar game Tetris (papan, balok jatuh, penghapusan baris).<br>- `[📝]` Implementasi awal deteksi tangan menggunakan MediaPipe untuk mendapatkan koordinat landmark tangan. | Menginterpretasi data landmark tangan menjadi perintah game yang reliable.                                                              | Mengintegrasikan deteksi angkat tangan kanan/kiri untuk menggeser balok.                    |
-|     3      | DD-MM-YYYY s.d. DD-MM-YYYY | - `[🔄]` Implementasi deteksi angkat tangan kanan untuk menggeser balok ke kanan.<br>- `[🔄]` Implementasi deteksi angkat tangan kiri untuk menggeser balok ke kiri.<br>- `[🧪]` Pengujian awal kontrol geser dan penyesuaian parameter deteksi (misalnya, ketinggian angkat tangan).<br>- `[📝]` Riset metode deteksi gestur "tepuk tangan" (clapping) menggunakan MediaPipe atau kombinasi dengan analisis suara (opsional). | Memastikan deteksi angkat tangan satu per satu tidak memicu geser yang berlebihan (de-bouncing).                                         | Implementasi rotasi balok dengan gestur tepuk tangan dan pengujian menyeluruh.             |
-|    ...     | ...                          | - `[Status]` Deskripsi tugas/progress...<br>- `[Status]` Deskripsi tugas/progress...                                                                                             | ...                                                                                                                                    | ...                                                                                        |
+| 1 | Alfajar | Setup awal webcam & baca frame | Done |  |
+| 2 | Ghiffari | Tambah deteksi tangan (gesture) | Done | Bisa optimasi lebih lanjut agar performance tidak boros |
+| 3 | Alfajar | Mapping gesture → kontrol: Kanan/kiri/tepuk = kontrol tetris | Done | Perbaiki nanti aja pas udah ada tetrisnya |
+| 4 | Ghiffari | Buat board/grid Tetris: Matriks 10x20 siap tampung block | Done | Mengecilkan webcam agar di atasnya bisa dibuat board skor |
+| 5 | Alfajar | Bikin bentuk Tetris (shape): Shape (L, I, T, Z, dll) dalam array | Done |  |
+| 6 | Alfajar | Gerak otomatis + gesture kontrol: Block turun otomatis, bisa digeser | Done | Butuh Optimasi soalnya masih buruk banget |
+| 7 | Alfajar | Tambah rotasi saat tepuk tangan: Gesture tepuk → trigger rotate | Done | Butuh Optimasi Logika tepuk tangannya, sering miss detection kalau mengepalkan tangan |
+| 8 | Alfajar | Overlay Tetris di webcam: Game di-render di atas video webcam | Done | aman harusnya tapi looksnya jadi kecil banget, ntar di rescale |
+| 9 | Ghiffari | Tambah skor & line clear: Tetris bisa clear row & hitung skor | Done |  |
+| 10 | Ghiffari | Tambah Sound sfx | Done |  |
+| 11 | Alfajar | Simpan video output (opsional): Rekam sesi jadi .mp4 | Done |  |
+| 12 | Alfajar | Clean code & refactor | Done |  |
+| 13 | Ghiffari | Fix Rotation dan Gesture Optimization: Memberikan delay pada logika rotasi dan memperbaiki pendeteksi gesture tangan | Done |  |
+| 14 | Alfajar & Ghiffari | Laporan Akhir: Membuat Laporan Akhir di LaTex | Ongoing |  |
 
 ---
 
@@ -67,7 +77,7 @@ Untuk menjalankan program Motion Tetris di komputer Anda, ikuti langkah-langkah 
 1.  **Clone Repositori**
     Buka terminal atau command prompt, lalu clone repositori ini:
     ```bash
-    git clone [https://github.com/](https://github.com/)[USERNAME_ANDA]/[NAMA_REPOSITORI_ANDA].git
+    git clone https://github.com/alfajar-122140122/motion-tetris.git
     cd [NAMA_REPOSITORI_ANDA]
     ```
 
