@@ -6,29 +6,38 @@
 
 ## 📜 Deskripsi Proyek
 
-Motion Tetris adalah implementasi game Tetris yang dimainkan bukan dengan keyboard atau mouse, melainkan dengan **deteksi gerakan tangan** pemain menggunakan teknologi **MediaPipe**. Mekanisme kontrolnya intuitif:
+Motion Tetris adalah implementasi game Tetris yang dimainkan bukan dengan keyboard atau mouse, melainkan dengan **deteksi gerakan tangan** pemain menggunakan teknologi **MediaPipe**. Mekanisme kontrolnya intuitif dan responsif:
 * Pemain **mengangkat tangan kanan** untuk menggeser balok Tetris ke **kanan**.
 * Pemain **mengangkat tangan kiri** untuk menggeser balok Tetris ke **kiri**.
-* Pemain melakukan gestur **menepuk tangan (clap)** untuk **merotasikan** balok Tetris.
+* Pemain melakukan gestur **pinch** (seperti mencubit) untuk **merotasikan** balok Tetris.
+* Pemain **menggenggam tangan** untuk melakukan **hard drop** (menjatuhkan balok dengan cepat).
 
-Menggunakan kamera (webcam), program akan secara real-time memproses citra dan mengenali gestur tangan tersebut untuk mengendalikan permainan. Proyek ini bertujuan untuk mengeksplorasi interaksi manusia-komputer melalui modalitas visual dan gerakan, serta mengaplikasikan konsep-konsep dalam teknologi multimedia untuk menciptakan pengalaman bermain yang imersif.
+Menggunakan kamera (webcam), program akan secara real-time memproses citra dan mengenali gestur tangan tersebut untuk mengendalikan permainan. Sistem deteksi gerakan telah dioptimalkan untuk memberikan respon yang cepat dan akurat.Proyek ini bertujuan untuk mengeksplorasi interaksi manusia-komputer melalui modalitas visual dan gerakan, serta mengaplikasikan konsep-konsep dalam teknologi multimedia untuk menciptakan pengalaman bermain yang imersif.
 
 ### ✨ Fitur Utama
-* Gameplay Tetris klasik yang adiktif.
-* Kontrol permainan intuitif menggunakan deteksi gerakan tangan (geser kanan/kiri, rotasi) melalui webcam dengan MediaPipe.
-* Deteksi gerakan secara real-time.
-* Antarmuka pengguna yang interaktif menampilkan papan permainan dan feed kamera (opsional, bisa juga hanya feedback visual di game).
-* Sistem skor dan peningkatan level permainan.
-* (Tambahkan fitur spesifik lainnya jika ada, seperti: *soft drop*, *hard drop* dengan gestur lain, pratinjau balok berikutnya, dll.)
+* **Kontrol Gerakan Presisi**
+  - Deteksi gerakan tangan real-time dengan MediaPipe
+  - Gestur intuitif untuk setiap gerakan Tetris
+  - Sistem anti-interference untuk mencegah deteksi yang tidak diinginkan
+  - Optimasi performa untuk respon cepat
+* **Gameplay Tetris Lengkap**
+  - Semua gerakan klasik Tetris (gerak, rotasi, hard drop)
+  - Sistem skor dan peningkatan level
+  - Efek suara dan musik latar
+  - Preview balok berikutnya
+* **Antarmuka Interaktif**
+  - Tampilan game board yang jelas
+  - Feed kamera dengan overlay permainan
+  - Panduan kontrol di layar
+* **Fitur Tambahan**
+  - Perekaman otomatis gameplay
+  - Statistik permainan realtime
 
 ### 🛠️ Teknologi yang Digunakan
 * **Bahasa Pemrograman:** Python
 * **Library Computer Vision & Deteksi Pose/Tangan:** OpenCV, MediaPipe
 * **Library GUI & Game Engine:** Pygame (atau Tkinter, PyQt, Kivy, dll.)
 * **Library Pendukung:** NumPy (untuk operasi numerik)
-* (Sebutkan teknologi spesifik lainnya yang Anda gunakan)
-
----
 
 ## 👨‍💻 Tim Pengembang
 
@@ -36,30 +45,6 @@ Menggunakan kamera (webcam), program akan secara real-time memproses citra dan m
 | --- | ------------------- | ---------- | ------------------------------------------- |
 | 1.  | Alfajar    | 122140122    | [@alfajar-122140122](https://github.com/alfajar-122140122) |
 | 2.  | Muhammad Ghiffari Iskandar    | 122140189    | [@GhiffariIs](https://github.com/GhiffariIs) |
-
----
-
-## 📖 Logbook Project Steps
-
-Berikut adalah catatan progress dan update proyek setiap progressnya.
-
-
-| Progress Ke- | Kontributor           | Aktivitas/Progress                                                                                                                                                             | Status                                                                                                                              | Note                                                                       |
-| :--------: | :--------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-| 1 | Alfajar | Setup awal webcam & baca frame | Done |  |
-| 2 | Ghiffari | Tambah deteksi tangan (gesture) | Done | Bisa optimasi lebih lanjut agar performance tidak boros |
-| 3 | Alfajar | Mapping gesture → kontrol: Kanan/kiri/tepuk = kontrol tetris | Done | Perbaiki nanti aja pas udah ada tetrisnya |
-| 4 | Ghiffari | Buat board/grid Tetris: Matriks 10x20 siap tampung block | Done | Mengecilkan webcam agar di atasnya bisa dibuat board skor |
-| 5 | Alfajar | Bikin bentuk Tetris (shape): Shape (L, I, T, Z, dll) dalam array | Done |  |
-| 6 | Alfajar | Gerak otomatis + gesture kontrol: Block turun otomatis, bisa digeser | Done | Butuh Optimasi soalnya masih buruk banget |
-| 7 | Alfajar | Tambah rotasi saat tepuk tangan: Gesture tepuk → trigger rotate | Done | Butuh Optimasi Logika tepuk tangannya, sering miss detection kalau mengepalkan tangan |
-| 8 | Alfajar | Overlay Tetris di webcam: Game di-render di atas video webcam | Done | aman harusnya tapi looksnya jadi kecil banget, ntar di rescale |
-| 9 | Ghiffari | Tambah skor & line clear: Tetris bisa clear row & hitung skor | Done |  |
-| 10 | Ghiffari | Tambah Sound sfx | Done |  |
-| 11 | Alfajar | Simpan video output (opsional): Rekam sesi jadi .mp4 | Done |  |
-| 12 | Alfajar | Clean code & refactor | Done |  |
-| 13 | Ghiffari | Fix Rotation dan Gesture Optimization: Memberikan delay pada logika rotasi dan memperbaiki pendeteksi gesture tangan | Done |  |
-| 14 | Alfajar & Ghiffari | Laporan Akhir: Membuat Laporan Akhir di LaTex | Ongoing |  |
 
 ---
 
@@ -78,7 +63,7 @@ Untuk menjalankan program Motion Tetris di komputer Anda, ikuti langkah-langkah 
     Buka terminal atau command prompt, lalu clone repositori ini:
     ```bash
     git clone https://github.com/alfajar-122140122/motion-tetris.git
-    cd [NAMA_REPOSITORI_ANDA]
+    cd motion-tetris
     ```
 
 2.  **(Opsional, tapi direkomendasikan) Buat dan Aktifkan Virtual Environment**
@@ -117,13 +102,55 @@ Setelah instalasi berhasil, Anda dapat menjalankan program sebagai berikut:
 
 4.  Jendela permainan akan muncul, dan kamera akan mulai mendeteksi gerakan tangan Anda.
 5.  **Instruksi Bermain:**
-    * **Menggerakkan Balok ke Kanan:** Angkat **tangan kanan** Anda hingga melewati batas ketinggian tertentu yang terdeteksi.
-    * **Menggerakkan Balok ke Kiri:** Angkat **tangan kiri** Anda hingga melewati batas ketinggian tertentu yang terdeteksi.
-    * **Memutar Balok:** Lakukan gestur **menepuk kedua tangan (clap)** di depan kamera.
-    * **(Opsional) Mempercepat Jatuh (Soft Drop):** [Jika diimplementasikan, deskripsikan gerakannya, misal: Turunkan kedua tangan secara bersamaan].
-    * **(Opsional) Menjatuhkan Langsung (Hard Drop):** [Jika diimplementasikan, deskripsikan gerakannya, misal: Gerakan tangan dengan cepat ke bawah atau gestur lain].
+    * **Menggerakkan Balok ke Kanan:** Angkat **tangan kanan** Anda di atas batas tinggi yang terdeteksi.
+    * **Menggerakkan Balok ke Kiri:** Angkat **tangan kiri** Anda di atas batas tinggi yang terdeteksi.
+    * **Memutar Balok:** Lakukan gestur **pinch** (mendekatkan ibu jari dan telunjuk).
+    * **Hard Drop:** Genggam tangan (semua jari tertekuk) untuk menjatuhkan balok dengan cepat.
+    * **Kontrol Keyboard Tambahan:**
+      - **P:** Pause/Resume permainan
+      - **Q:** Keluar dari permainan
+      - **R:** Mulai ulang (saat game over)
+      - **O:** Ubah mode tampilan (overlay/side-by-side)
 
-6.  Cobalah untuk mendapatkan skor tertinggi! Untuk keluar dari permainan, [Deskripsikan cara keluar, misal: tekan tombol 'ESC' atau tutup jendela permainan].
+6.  Tips untuk Deteksi Gerakan yang Optimal:
+    * Pastikan pencahayaan ruangan cukup terang
+    * Jaga jarak ±1 meter dari kamera
+    * Tunjukkan gerakan dengan jelas dan konsisten
+    * Hindari gerakan yang terlalu cepat
+
+---
+
+## 📅 Timeline Progress
+
+### Minggu 1 
+- Initial Commit: Setup awal project (6 Mei)
+- Setup webcam dan frame capture (7 Mei)
+- Instalasi MediaPipe dan konfigurasi dasar (7 Mei)
+- Implementasi deteksi tangan dengan MediaPipe (7 Mei)
+- Pengembangan kontrol gerakan tangan (8 Mei)
+- Mapping gesture untuk gerak kiri/kanan dan rotasi (8 Mei)
+- Peningkatan akurasi gesture clap (8 Mei)
+- Implementasi board Tetris 10x20 (9 Mei)
+- Penambahan kontrol dan bentuk Tetris (11 Mei)
+
+### Minggu 2 
+- Implementasi overlay Tetris pada webcam (17 Mei)
+- Testing dan optimasi overlay
+
+### Minggu 3 
+- Implementasi sistem clear row dan scoring (23 Mei)
+- Penambahan sound effect dan BGM (23 Mei)
+- Implementasi code modularization (25 Mei)
+- Penambahan fitur game recording (25 Mei)
+
+### Minggu 4 
+
+- Implementasi fitur fast drop (27 Mei)
+- Perubahan fast drop menjadi hard drop (30 Mei)
+- Penambahan rotation delay (30 Mei)
+- Perbaikan sistem gesture (31 Mei)
+- Motion Tetris Patch 1.0 (31 Mei)
+- Cleaning code final (31 Mei)
 
 ---
 
