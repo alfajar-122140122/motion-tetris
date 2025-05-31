@@ -1,6 +1,6 @@
 # Motion Tetris - Tugas Besar Sistem/Teknologi Multimedia
 
-![Motion Tetris Banner](link_ke_banner_anda.png) Selamat datang di **Motion Tetris**, sebuah proyek inovatif yang menggabungkan permainan klasik Tetris dengan teknologi multimedia interaktif! Proyek ini dikembangkan sebagai bagian dari Tugas Besar mata kuliah Sistem/Teknologi Multimedia. Motion Tetris memungkinkan pemain untuk mengontrol balok-balok Tetris menggunakan gerakan tangan yang dideteksi melalui kamera dengan teknologi MediaPipe, memberikan pengalaman bermain yang unik, menantang, dan menyenangkan.
+Selamat datang di **Motion Tetris**, sebuah proyek inovatif yang menggabungkan permainan klasik Tetris dengan teknologi multimedia interaktif! Proyek ini dikembangkan sebagai bagian dari Tugas Besar mata kuliah Sistem/Teknologi Multimedia. Motion Tetris memungkinkan pemain untuk mengontrol balok-balok Tetris menggunakan gerakan tangan yang dideteksi melalui kamera dengan teknologi MediaPipe, memberikan pengalaman bermain yang unik, menantang, dan menyenangkan.
 
 ---
 
@@ -155,7 +155,7 @@ Setelah instalasi berhasil, Anda dapat menjalankan program sebagai berikut:
 ---
 
 # Lampiran
-[Demo Game](https://youtu.be/83qw3sykKLQ)
+[Demo Filter](https://youtu.be/83qw3sykKLQ)
 
 ---
 
