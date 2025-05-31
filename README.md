@@ -154,4 +154,9 @@ Setelah instalasi berhasil, Anda dapat menjalankan program sebagai berikut:
 
 ---
 
+# Lampiran
+[Demo Game](https://youtu.be/83qw3sykKLQ)
+
+---
+
 Selamat mengembangkan dan bermain Motion Tetris! Jika ada pertanyaan atau kendala, silakan buat *issue* di repositori ini.
